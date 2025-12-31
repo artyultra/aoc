@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "adevent-of-code"
+version = "0.1.0"
+description = "manage envirnement packages for advent challanges"
+authors = ["kiganoakuma <daltonhberg@icloud.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+beautifulsoup4 = "^4.12.3"
+advent-of-code-data = "^2.0.4"
+networkx = {extras = ["default"], version = "^3.4.2"}
+requests = "^2.32.3"
+browser-cookie3 = "^0.20.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
