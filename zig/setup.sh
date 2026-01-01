@@ -27,7 +27,7 @@ mkdir -p "$FOLDER_PATH" \
 cd "$working_dir/solutions/$YEAR/day$DAY"
 
 echo "$puzzle_dat" > \
-  "$FOLDER_PATH/input.txt"
+  "$FOLDER_PATH/src/input.txt"
 
 cp "$working_dir/templates/main.zig" \
   "$FOLDER_PATH/src/main.zig"
