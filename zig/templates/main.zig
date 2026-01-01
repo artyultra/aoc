@@ -1,22 +1,32 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const print = std.log.info;
 
-pub fn getInput(allocator: Allocator, filename: []const u8) ![]const u8 {
-    const file = try std.fs.cwd().openFile(filename, .{});
-    defer file.close();
+const INPUT_FILE = @embedFile("example.txt");
 
-    const content = try file.readToEndAlloc(allocator, 1024 * 1024);
+const Input = struct {
+    const Self = @This();
 
-    return content;
+    allocator: Allocator,
+    raw_data: []const u8,
+
+    fn deinit(self: *Self) void {
+        defer self.allocator.free(self.raw_data);
+    }
+};
+
+fn parseInput(allocator: Allocator, raw_data: []const u8) !Input {
+    return Input{
+        .raw_data = raw_data,
+        .allocator = allocator,
+    };
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+    var alloc = std.heap.GeneralPurposeAllocator(.{}){};
 
-    const content = try getInput(allocator, "input.txt");
-    defer allocator.free(content);
+    const input = try parseInput(alloc.allocator(), INPUT_FILE);
+    // defer input.deinit();
 
-    std.debug.print("Part 1: {s}\n", .{content});
+    print("input: {s}", .{input.raw_data});
 }

@@ -21,8 +21,8 @@ mkdir -p "$FOLDER_PATH" \
   && mkdir -p "$FOLDER_PATH/src" \
   && touch "$FOLDER_PATH/src/main.zig" \
   && touch "$FOLDER_PATH/build.zig" \
-  && touch "$FOLDER_PATH/input.txt" \
-  && touch "$FOLDER_PATH/example.txt"
+  && touch "$FOLDER_PATH/src/input.txt" \
+  && touch "$FOLDER_PATH/src/example.txt"
 
 cd "$working_dir/solutions/$YEAR/day$DAY"
 
