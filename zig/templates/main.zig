@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const print = std.log.info;
 
-const INPUT_FILE = @embedFile("example.txt");
+const INPUT_FILE = @embedFile("input.txt");
 
 const Input = struct {
     const Self = @This();
