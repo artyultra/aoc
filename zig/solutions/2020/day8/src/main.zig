@@ -5,6 +5,8 @@ const info = std.log.info;
 
 const INPUT_FILE = @embedFile("input.txt");
 
+const RunOpsResult = struct { acc: i32, repeated: bool };
+
 const Op = struct {
     op: []const u8,
     val: i32,
@@ -57,15 +59,14 @@ fn parseInput(allocator: Allocator, raw_data: []const u8) !Input {
     };
 }
 
-fn runOps(input: Input) !i32 {
-    const ops = input.ops;
-
-    var visited = try input.allocator.alloc(bool, ops.len);
+fn runOps(allocator: Allocator, ops: []Op) !RunOpsResult {
+    var visited = try allocator.alloc(bool, ops.len);
     @memset(visited, false);
+    defer allocator.free(visited);
     var acc: i32 = 0;
     var repeated: bool = false;
     var ip: isize = 0;
-    while (!repeated) {
+    while (!repeated and ip < ops.len) {
         const idx: usize = @intCast(ip);
         if (visited[idx]) {
             repeated = true;
@@ -77,7 +78,6 @@ fn runOps(input: Input) !i32 {
         const opt = ops[idx];
         const op = opt.op;
         const val = opt.val;
-        print("Op: {s} {d}\n", .{ op, val });
         if (std.mem.eql(u8, op, "nop")) {
             ip += 1;
             continue;
@@ -90,7 +90,7 @@ fn runOps(input: Input) !i32 {
             continue;
         }
     }
-    return acc;
+    return RunOpsResult{ .acc = acc, .repeated = repeated };
 }
 
 pub fn main() !void {
@@ -98,10 +98,42 @@ pub fn main() !void {
 
     var input = try parseInput(alloc.allocator(), INPUT_FILE);
     defer input.deinit();
-    const res1 = try part1(input);
-    print("part1: {}\n", .{res1});
+
+    // const res1 = try part1(input);
+    // print("part1: {}, inf: {}\n", .{ res1.acc, res1.repeated });
+
+    const res2 = try part2(input);
+    print("part2: {}", .{res2});
 }
 
-fn part1(input: Input) !i32 {
-    return try runOps(input);
+fn part1(input: Input) !RunOpsResult {
+    return try runOps(input.allocator, input.ops);
+}
+
+fn part2(input: Input) !i32 {
+    const ops_copy = try input.allocator.alloc(Op, input.ops.len);
+    defer input.allocator.free(ops_copy);
+    @memcpy(ops_copy, input.ops);
+    for (ops_copy) |*op| {
+        if (std.mem.eql(u8, op.op, "jmp")) {
+            op.op = "nop";
+            const attempt = try runOps(input.allocator, ops_copy);
+            if (!attempt.repeated) {
+                return attempt.acc;
+            } else {
+                print("{}\n", .{attempt.repeated});
+                op.op = "jmp";
+            }
+        } else if (std.mem.eql(u8, op.op, "nop")) {
+            op.op = "jmp";
+            const attempt = try runOps(input.allocator, ops_copy);
+            if (!attempt.repeated) {
+                return attempt.acc;
+            } else {
+                print("{}\n", .{attempt.repeated});
+                op.op = "nop";
+            }
+        }
+    }
+    return error.NoInfiniteLoopFound;
 }
