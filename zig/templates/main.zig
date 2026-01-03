@@ -11,9 +11,9 @@ const Input = struct {
     allocator: Allocator,
     raw_data: []const u8,
 
-    pub fn deinit(self: *Self) void {
-        defer self.allocator.free(self.raw_data);
-    }
+    // pub fn deinit(self: *Self) void {
+    //     return;
+    // }
 };
 
 fn parseInput(allocator: Allocator, raw_data: []const u8) !Input {
@@ -26,6 +26,8 @@ fn parseInput(allocator: Allocator, raw_data: []const u8) !Input {
 pub fn main() !void {
     var alloc = std.heap.GeneralPurposeAllocator(.{}){};
 
+    // dont forget to change to var after
+    // implementing input.deinit()
     const input = try parseInput(alloc.allocator(), INPUT_FILE);
     // defer input.deinit();
 

@@ -36,7 +36,7 @@ fn parseInput(allocator: Allocator, raw_data: []const u8) !Input {
     };
 }
 
-fn runSim(nums: []i64, range: usize) !i64 {
+fn findInvalid(nums: []i64, range: usize) !i64 {
     var check_idx: usize = range;
     while (check_idx < nums.len) : (check_idx += 1) {
         const num = nums[check_idx];
@@ -60,6 +60,24 @@ fn runSim(nums: []i64, range: usize) !i64 {
     return error.NotFound;
 }
 
+fn findContiguousSet(nums: []i64, target: i64) !i64 {
+    var check_idx: usize = 0;
+    while (check_idx < nums.len) : (check_idx += 1) {
+        var sum: i64 = 0;
+        var min: i64 = std.math.maxInt(i64);
+        var max: i64 = std.math.minInt(i64);
+        for (check_idx..nums.len) |i| {
+            if (nums[i] < min) min = nums[i];
+            if (nums[i] > max) max = nums[i];
+            sum += nums[i];
+            if (sum == target) {
+                return min + max;
+            }
+        }
+    }
+    return error.NotFound;
+}
+
 pub fn main() !void {
     var alloc = std.heap.GeneralPurposeAllocator(.{}){};
 
@@ -67,9 +85,15 @@ pub fn main() !void {
     defer input.deinit();
 
     const res1 = try part1(input.nums, 25);
-    print("part1: {}", .{res1});
+    print("part1: {}\n", .{res1});
+    const res2 = try part2(input.nums, res1);
+    print("part2: {}\n", .{res2});
 }
 
 fn part1(nums: []i64, range: usize) !i64 {
-    return runSim(nums, range);
+    return findInvalid(nums, range);
+}
+
+fn part2(nums: []i64, target: i64) !i64 {
+    return findContiguousSet(nums, target);
 }
