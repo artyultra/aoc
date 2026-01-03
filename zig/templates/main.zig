@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const print = std.log.info;
+const print = std.debug.print;
+const info = std.debug.info;
 
 const INPUT_FILE = @embedFile("input.txt");
 
@@ -10,7 +11,7 @@ const Input = struct {
     allocator: Allocator,
     raw_data: []const u8,
 
-    fn deinit(self: *Self) void {
+    pub fn deinit(self: *Self) void {
         defer self.allocator.free(self.raw_data);
     }
 };
