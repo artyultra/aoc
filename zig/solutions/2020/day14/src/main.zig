@@ -5,6 +5,13 @@ const info = std.log.info;
 
 const INPUT_FILE = @embedFile("input.txt");
 
+const MaskP2 = struct {
+    or_mask: u64,
+    floating_mask: u64,
+    floating_positions: [36]u6,
+    floating_len: usize,
+};
+
 const Input = struct {
     const Self = @This();
 
@@ -16,22 +23,16 @@ const Input = struct {
         self.allocator.free(self.lines);
     }
 
-    fn parseMask(mask_str: []const u8) struct { and_mask: u64, or_mask: u64 } {
-        var and_mask: u64 = (1 << 36) - 1;
-        var or_mask: u64 = 0;
+    fn printValueToBinary(buf: []u8, value: u64) []const u8 {
+        const len = std.fmt.printInt(
+            buf,
+            value,
+            2,
+            .lower,
+            .{},
+        );
 
-        for (mask_str, 0..) |c, i| {
-            const bit_idx: u6 = @intCast(35 - i);
-            const bit: u64 = (@as(u64, 1) << bit_idx);
-
-            switch (c) {
-                '1' => or_mask |= bit,
-                '0' => and_mask &= ~bit,
-                'X' => {},
-                else => unreachable,
-            }
-        }
-        return .{ .and_mask = and_mask, .or_mask = or_mask };
+        return buf[0..len];
     }
 
     fn parseMemLine(line: []const u8) !struct { addr: u64, value: u64 } {
@@ -50,16 +51,78 @@ const Input = struct {
         return .{ .addr = addr, .value = value };
     }
 
-    fn printValueToBinary(buf: []u8, value: u64) []const u8 {
-        const len = std.fmt.printInt(
-            buf,
-            value,
-            2,
-            .lower,
-            .{},
-        );
+    fn parseMaskP1(mask_str: []const u8) struct { and_mask: u64, or_mask: u64 } {
+        var and_mask: u64 = (1 << 36) - 1;
+        var or_mask: u64 = 0;
 
-        return buf[0..len];
+        for (mask_str, 0..) |c, i| {
+            const bit_idx: u6 = @intCast(35 - i);
+            const bit: u64 = (@as(u64, 1) << bit_idx);
+
+            switch (c) {
+                '1' => or_mask |= bit,
+                '0' => and_mask &= ~bit,
+                'X' => {},
+                else => unreachable,
+            }
+        }
+        return .{ .and_mask = and_mask, .or_mask = or_mask };
+    }
+
+    fn parseMaskP2(mask_str: []const u8) MaskP2 {
+        var m = MaskP2{
+            .or_mask = 0,
+            .floating_mask = 0,
+            .floating_positions = undefined,
+            .floating_len = 0,
+        };
+
+        for (mask_str, 0..) |c, i| {
+            const bit_idx: u6 = @intCast(35 - i);
+            const bit: u64 = (@as(u64, 1) << bit_idx);
+
+            switch (c) {
+                '1' => m.or_mask |= bit,
+                'X' => {
+                    m.floating_mask |= bit;
+                    m.floating_positions[m.floating_len] = bit_idx;
+                    m.floating_len += 1;
+                },
+                '0' => {},
+                else => unreachable,
+            }
+        }
+
+        return m;
+    }
+
+    fn writeAllFloating(
+        memory: *std.AutoHashMap(u64, u64),
+        mask: MaskP2,
+        addr: u64,
+        value: u64,
+    ) !void {
+        // apply forced 1s
+        var base = addr | mask.or_mask;
+
+        // clear floating bits for consistent base
+        base &= ~mask.floating_mask;
+
+        const combos: u64 = (@as(u64, 1) << @intCast(mask.floating_len));
+
+        var c: u64 = 0;
+        while (c < combos) : (c += 1) {
+            var a = base;
+
+            var j: usize = 0;
+            while (j < mask.floating_len) : (j += 1) {
+                // bit j of c controlls floating_postions[j]
+                if (((c >> @intCast(j)) & 1) == 1) {
+                    a |= (@as(u64, 1) << mask.floating_positions[j]);
+                }
+            }
+            try memory.put(a, value);
+        }
     }
 
     pub fn part1(self: *Self) !u64 {
@@ -71,7 +134,7 @@ const Input = struct {
         for (self.lines) |line| {
             const mask_or_mem = line[0..4];
             if (std.mem.eql(u8, mask_or_mem, "mask")) {
-                const parsed_mask = parseMask(line[7..]);
+                const parsed_mask = parseMaskP1(line[7..]);
                 and_mask = parsed_mask.and_mask;
                 or_mask = parsed_mask.or_mask;
             }
@@ -88,6 +151,30 @@ const Input = struct {
             const val = kv_ptr.value_ptr.*;
             const addr = kv_ptr.key_ptr.*;
             info("k: {}, v: {}\n", .{ addr, val });
+            total += val;
+        }
+        return total;
+    }
+
+    pub fn part2(self: *Self) !u64 {
+        var memory = std.AutoHashMap(u64, u64).init(self.allocator);
+        defer memory.deinit();
+
+        var mask_p2: MaskP2 = undefined;
+        for (self.lines) |line| {
+            const is_mask = std.mem.eql(u8, line[0..4], "mask");
+            if (is_mask) {
+                mask_p2 = parseMaskP2(line[7..]);
+                continue;
+            }
+            const mem_line = try parseMemLine(line);
+            try writeAllFloating(&memory, mask_p2, mem_line.addr, mem_line.value);
+        }
+
+        var total: u64 = 0;
+        var memory_it = memory.iterator();
+        while (memory_it.next()) |kv| {
+            const val = kv.value_ptr.*;
             total += val;
         }
         return total;
@@ -116,6 +203,9 @@ pub fn main() !void {
     var input = try parseInput(alloc.allocator(), INPUT_FILE);
     defer input.deinit();
 
-    const part1 = try input.part1();
-    print("Part 1: {}\n", .{part1});
+    // const part1 = try input.part1();
+    // print("Part 1: {}\n", .{part1});
+
+    const part2 = try input.part2();
+    print("Part 2: {}\n", .{part2});
 }
