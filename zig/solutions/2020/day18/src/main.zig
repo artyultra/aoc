@@ -5,119 +5,11 @@ const info = std.log.info;
 
 const INPUT_FILE = @embedFile("input.txt");
 
+const PartState = enum { Part1, Part2 };
+
 const Operator = enum {
     Add,
     Multi,
-};
-
-const Input = struct {
-    const Self = @This();
-
-    allocator: Allocator,
-    lines: [][]const u8,
-
-    pub fn deinit(self: *Self) void {
-        self.allocator.free(self.lines);
-    }
-
-    fn findMatchingClosParenthesis(s: []const u8, open_idx: usize) !usize {
-        if (open_idx >= s.len or s[open_idx] != '(') return error.NotOpenParen;
-
-        var depth: usize = 0;
-        var i = open_idx;
-        while (i < s.len) : (i += 1) {
-            switch (s[i]) {
-                '(' => depth += 1,
-                ')' => {
-                    depth -= 1;
-                    if (depth == 0) return i;
-                    if (depth < 0) return error.UnbalancedParens;
-                },
-                else => {},
-            }
-        }
-        return error.UnbalancedParens;
-    }
-
-    fn multiply(a: i64, b: i64) i64 {
-        return a * b;
-    }
-
-    fn add(a: i64, b: i64) i64 {
-        return a + b;
-    }
-
-    fn handleOperation(op: Operator, a: i64, b: i64) !i64 {
-        switch (op) {
-            .Add => return add(a, b),
-            .Multi => return multiply(a, b),
-        }
-    }
-
-    fn parseExpression(s: []const u8) !i64 {
-        return parseExpressionImpl(s, 0);
-    }
-
-    fn parseExpressionImpl(s: []const u8, acc_in: i64) !i64 {
-        var acc: i64 = acc_in;
-        var op: Operator = undefined;
-        var current_num: i64 = 0;
-        var have_num: bool = false;
-
-        var i: usize = 0;
-        while (i < s.len) : (i += 1) {
-            switch (s[i]) {
-                ' ' => {
-                    if (have_num) {
-                        acc = try handleOperation(op, acc, current_num);
-                        current_num = 0;
-                        have_num = false;
-                    }
-                },
-                '+' => op = .Add,
-                '*' => op = .Multi,
-
-                '(' => {
-                    const end_idx = try findMatchingClosParenthesis(s, i);
-                    const sub_expr = s[i + 1 .. end_idx];
-
-                    const sub_val = try parseExpressionImpl(sub_expr, 0);
-
-                    if (have_num) {
-                        acc = try handleOperation(op, acc, current_num);
-                        current_num = 0;
-                        have_num = false;
-                    }
-
-                    acc = try handleOperation(op, acc, sub_val);
-
-                    // skip ahead to the ')'
-                    i = end_idx;
-                },
-                '0'...'9' => {
-                    have_num = true;
-                    current_num = current_num * 10 + @as(i64, s[i] - '0');
-                },
-                else => return error.UnexpectedChar,
-            }
-        }
-
-        // flush trailing number at the end
-        if (have_num) {
-            acc = try handleOperation(op, acc, current_num);
-        }
-
-        return acc;
-    }
-
-    pub fn evaluate(self: *Self) !i64 {
-        var acc: i64 = 0;
-        for (self.lines) |line| {
-            acc += try parseExpression(line);
-        }
-
-        return acc;
-    }
 };
 
 fn parseInput(allocator: Allocator, raw_data: []const u8) !Input {
@@ -132,8 +24,143 @@ fn parseInput(allocator: Allocator, raw_data: []const u8) !Input {
     return Input{
         .allocator = allocator,
         .lines = try lines.toOwnedSlice(allocator),
+        .state = .Part1,
     };
 }
+
+const ParseError = error{
+    UnexpectedChar,
+    ExpectedNumber,
+    TrailingGarbage,
+};
+
+const Parser = struct {
+    s: []const u8,
+    i: usize = 0,
+    mode: PartState,
+
+    fn skipSpaces(self: *Parser) void {
+        while (self.i < self.s.len and self.s[self.i] == ' ') self.i += 1;
+    }
+
+    fn peek(self: *Parser) ?u8 {
+        self.skipSpaces();
+        if (self.i >= self.s.len) return null;
+        return self.s[self.i];
+    }
+
+    fn eat(self: *Parser, ch: u8) ParseError!void {
+        self.skipSpaces();
+        if (self.i >= self.s.len or self.s[self.i] != ch) return error.UnexpectedChar;
+        self.i += 1;
+    }
+
+    fn parseNumber(self: *Parser) ParseError!i64 {
+        self.skipSpaces();
+        if (self.i >= self.s.len or self.s[self.i] < '0' or self.s[self.i] > '9') return error.ExpectedNumber;
+        var n: i64 = 0;
+        while (self.i < self.s.len) : (self.i += 1) {
+            const ch = self.s[self.i];
+            if (ch < '0' or ch > '9') break;
+            n = n * 10 + @as(i64, ch - '0');
+        }
+        return n;
+    }
+
+    fn parseFactor(self: *Parser) ParseError!i64 {
+        if (self.peek()) |c| {
+            if (c == '(') {
+                try self.eat('(');
+                const v = try self.parseTop();
+                try self.eat(')');
+                return v;
+            }
+        }
+        return try self.parseNumber();
+    }
+
+    fn parseTop(self: *Parser) ParseError!i64 {
+        return switch (self.mode) {
+            .Part1 => try self.parseExpression(),
+            .Part2 => try self.parseExpression2(),
+        };
+    }
+
+    // Part 1: left-to-right
+    fn parseExpression(self: *Parser) ParseError!i64 {
+        var acc = try self.parseFactor();
+        while (true) {
+            const op = self.peek() orelse break;
+            if (op != '+' and op != '*') break;
+
+            self.i += 1;
+            const rhs = try self.parseFactor();
+
+            acc = switch (op) {
+                '+' => acc + rhs,
+                '*' => acc * rhs,
+                else => unreachable,
+            };
+        }
+        return acc;
+    }
+
+    // Part 2: '+' before '*'
+    // term := factor ( '+' factor )*
+    fn parseTerm(self: *Parser) ParseError!i64 {
+        var acc = try self.parseFactor();
+        while (true) {
+            const p = self.peek() orelse break;
+            if (p != '+') break;
+
+            self.i += 1;
+            const rhs = try self.parseFactor();
+            acc += rhs;
+        }
+        return acc;
+    }
+
+    fn parseExpression2(self: *Parser) ParseError!i64 {
+        var acc = try self.parseTerm();
+        while (true) {
+            const p = self.peek() orelse break;
+            if (p != '*') break;
+
+            self.i += 1;
+            const rhs = try self.parseTerm();
+            acc *= rhs;
+        }
+        return acc;
+    }
+};
+
+const Input = struct {
+    const Self = @This();
+
+    allocator: Allocator,
+    lines: [][]const u8,
+    state: PartState,
+
+    pub fn deinit(self: *Self) void {
+        self.allocator.free(self.lines);
+    }
+
+    fn evalLine(self: *Self, line: []const u8) !i64 {
+        var p = Parser{ .s = line, .mode = self.state };
+        const v = try p.parseTop();
+        p.skipSpaces();
+        if (p.i != line.len) return error.TrailingGarbage;
+        return v;
+    }
+
+    pub fn evaluate(self: *Self) !i64 {
+        var sum: i64 = 0;
+        for (self.lines) |line| {
+            sum += try self.evalLine(line);
+        }
+        return sum;
+    }
+};
 
 pub fn main() !void {
     var alloc = std.heap.GeneralPurposeAllocator(.{}){};
@@ -141,6 +168,11 @@ pub fn main() !void {
     var input = try parseInput(alloc.allocator(), INPUT_FILE);
     defer input.deinit();
 
+    input.state = .Part1;
     const part1 = try input.evaluate();
     info("Part 1: {d}", .{part1});
+
+    input.state = .Part2;
+    const part2 = try input.evaluate();
+    info("Part 2: {d}", .{part2});
 }
