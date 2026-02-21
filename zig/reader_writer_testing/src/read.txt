@@ -1,0 +1,4 @@
+{"id":1,"user":"a","text":"hello"}
+{"id":2,"user":"b","text":"msg 2"}
+{"id":3,"user":"b","text":"msg 3"}
+{"id":4,"user":"c","text":"unicode ok: café ☕"}

@@ -168,9 +168,13 @@ pub fn main() !void {
     var input = try parseInput(alloc.allocator(), INPUT_FILE);
     defer input.deinit();
 
+    print("\n", .{});
+
     input.state = .Part1;
     const part1 = try input.evaluate();
     info("Part 1: {d}", .{part1});
+
+    print("\n", .{});
 
     input.state = .Part2;
     const part2 = try input.evaluate();

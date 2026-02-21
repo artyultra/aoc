@@ -19,21 +19,25 @@ puzzle_dat=$(
 FOLDER_PATH="$working_dir/solutions/$YEAR/day$DAY"
 mkdir -p "$FOLDER_PATH" \
   && mkdir -p "$FOLDER_PATH/src" \
-  && touch "$FOLDER_PATH/src/main.zig" \
   && touch "$FOLDER_PATH/build.zig" \
+  && touch "$FOLDER_PATH/src/main.zig" \
+  && touch "$FOLDER_PATH/src/input.zig" \
   && touch "$FOLDER_PATH/src/input.txt" \
   && touch "$FOLDER_PATH/src/example.txt"
 
 cd "$working_dir/solutions/$YEAR/day$DAY"
 
-echo "$puzzle_dat" > \
-  "$FOLDER_PATH/src/input.txt"
+cp "$working_dir/templates/build.zig" \
+  "$FOLDER_PATH/build.zig"
 
 cp "$working_dir/templates/main.zig" \
   "$FOLDER_PATH/src/main.zig"
 
-cp "$working_dir/templates/build.zig" \
-  "$FOLDER_PATH/build.zig"
+cp "$working_dir/templates/input.zig" \
+  "$FOLDER_PATH/src/input.zig"
+
+echo "$puzzle_dat" > \
+  "$FOLDER_PATH/src/input.txt"
 
 sed -i '' "s/myproject/DAY$DAY/" "$FOLDER_PATH/build.zig"
 

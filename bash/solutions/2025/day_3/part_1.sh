@@ -1,31 +1,22 @@
 #!/opt/homebrew/bin/bash
 
-source "$HOME/aoc/bash/.env"
+source "$HOME/dev/aoc/bash/.env"
 
-INPUT="$PWD/input.txt"
-EXAMPLE="$PWD/example.txt"
+INPUT_PATH="$PWD/$1"
 
-# input=$(cat "$INPUT_PATH")
+mapfile -t input < <(cat "$INPUT_PATH")
 
-mapfile -t input < <(cat "$INPUT")
-
-total=0
 for line in "${input[@]}"; do
+  best=0
   length=${#line}
-  tens=0
-  ones=0
-  for ((i = 0; i < length - 1; i++)); do
-    num=${line:$i:1}
-    num2=${line:$((i + 1)):1}
-    if ((num > tens)); then
-      tens="$num"
-      ones="$num2"
-    fi
-    if ((num2 > ones)); then
-      ones=$num2
-    fi
+  for ((i = 0; i < length; i++)); do
+    for ((j = i + 1; j < length; j++)); do
+      num="${line:$i:1}${line:$j:1}"
+      if ((num > best)); then
+        best=$num
+      fi
+    done
   done
-  final="$tens$ones"
-  total=$((total + final))
+  total=$((total + best))
 done
-echo "$total"
+echo "part2: $total"

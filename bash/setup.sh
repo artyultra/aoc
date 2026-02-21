@@ -2,7 +2,7 @@
 
 # This script will setup the environment for the bash solutions
 
-working_dir="$HOME/aoc/bash"
+working_dir="$HOME/dev/aoc/bash"
 
 source "$working_dir/.env"
 
@@ -30,7 +30,7 @@ echo "$puzzle_dat" > \
 
 TEMPLATE_TEXT="#!/opt/homebrew/bin/bash
 
-source \"\$HOME/aoc/bash/.env\"
+source \"\$HOME/dev/aoc/bash/.env\"
 
 INPUT_PATH=\"\$PWD/input.txt\"
 EXAMPLE_PATH=\"\$PWD/example.txt\"
@@ -44,3 +44,5 @@ echo "$TEMPLATE_TEXT" > \
   "$FOLDER_PATH/part_1.sh"
 echo "$TEMPLATE_TEXT" > \
   "$FOLDER_PATH/part_2.sh"
+
+cd "$FOLDER_PATH"
