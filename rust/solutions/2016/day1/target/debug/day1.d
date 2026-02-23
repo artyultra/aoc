@@ -1,0 +1,1 @@
+/Users/kiga/dev/aoc/rust/solutions/2016/day1/target/debug/day1: /Users/kiga/dev/aoc/rust/solutions/2016/day1/src/common.rs /Users/kiga/dev/aoc/rust/solutions/2016/day1/src/main.rs /Users/kiga/dev/aoc/rust/solutions/2016/day1/src/part1.rs
