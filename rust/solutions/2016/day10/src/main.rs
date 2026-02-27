@@ -67,10 +67,10 @@ impl Solve {
             }
         }
 
-        let output0 = self.outputs.get(&0).unwrap();
-        let output1 = self.outputs.get(&1).unwrap();
-        let output2 = self.outputs.get(&2).unwrap();
-        let product = output0[0] * output1[0] * output2[0];
+        let output0 = self.outputs.get(&0).unwrap()[0];
+        let output1 = self.outputs.get(&1).unwrap()[0];
+        let output2 = self.outputs.get(&2).unwrap()[0];
+        let product = output0 * output1 * output2;
         println!("part two: {}", product);
     }
 
