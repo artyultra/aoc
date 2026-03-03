@@ -19,6 +19,8 @@ FOLDER_PATH="$WORKDIR/solutions/$YEAR/day$DAY"
 ## init new rust project
 cargo init "$FOLDER_PATH"
 
+echo $(cat ./templates/main.rs >"$FOLDER_PATH/src/main.rs")
+
 touch "$FOLDER_PATH/input.txt"
 echo "$puzzle_dat" >"$FOLDER_PATH/input.txt"
 
